@@ -5,5 +5,6 @@
   :author "Winston Carlile wjc140030@utdallas.edu"
   :license "Apache 2.0 License"
   :serial t
+  :depends-on ("utilities")
   :components ((:file "package")
 	       (:file "computer-algebra")))
