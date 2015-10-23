@@ -27,6 +27,15 @@
    (eql (has-vars-p '(/ (log 1 2) (expt 7 3))) nil)
    (eql (has-vars-p '(expt 12 (+ 2 4 (- 89 (/ 1 2 'x))))) t)))
 
+(defun contains-var (var tree)
+  (dolist (node tree nil)
+    (if (listp node)
+	(if (contains-var var node)
+	    (return-from contains-var t))
+	(if (equal var node)
+	    (return-from contains-var t)))))
+
+
 (defun replace-var (tree var value)
   (assert (not (eql tree nil)))
   (dotimes (index (length tree) tree)
@@ -135,6 +144,8 @@
       6)
    (equal (simplify '(+ 1 x))
 	  '(+ 1 x))))
+
+(defparameter recursion-count 0)
 
 (defun simplify-addition (args)
   (if (= (length args) 1)
@@ -318,19 +329,28 @@ of an expression."
 (defun solve-for (variable equation)
   "Given a symbol as a variable and a pair of expression trees as an equation, 
 isolate the specified variable and simplify the other side of the equation."
-  (assert (equal '= (first equation)))
-  (assert (= (length equation) 3))
+  (assert (equal '= (first equation))) ;equation must start with "=" symbol
   ())
 
 (deftest test-solve-for ()
   (check
     ;; How do I test that an error is correctly thrown?
-    ;(= (solve-for 'x '(= 1 2)) 'error)
-    (= (solve-for 'x '(= x 4)) 4)
-    (= (solve-for 'x '(= 4 x)) 4)
-    (= (solve-for 'x '(= (+ x 2) 4)))
-    (= (solve-for 'x '(= (+ x -2) 6)))
-    (= (solve-for 'x '(= (+ 2 (* -1 x)) -2)))
-    (= (solve-for 'x '(=
-		       (+ 4 (+ 2 (* -1 x)))
-		       (+ ))))))
+    ;; (= (solve-for 'x '(= 1 2)) 'error)
+    ;; (= (solve-for 'x '(= x 4)) 4)
+    ;; (= (solve-for 'x '(= 4 x)) 4)
+    ;; (= (solve-for 'x '(= (+ x 2) 4)))
+    ;; (= (solve-for 'x '(= (+ x -2) 6)))
+    ;; (= (solve-for 'x '(= (+ 2 (* -1 x)) -2)))
+    ;; (= (solve-for 'x '(=
+    ;; 		       (+ 4 (+ 2 (* -1 x)))
+    ;; 		       (+ )))
+    ))
+
+(defun expand-polynomial (polynomial exponent)
+  )
+
+(define-theorem
+    '(* -1 (* -1 x)) 'x)
+
+(defun define-theorem (exp1 exp2)
+  (cons exp1 (cons exp2 nil)))
