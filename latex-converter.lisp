@@ -1,5 +1,6 @@
 ;;;; latex-converter.lisp
 ;; Converts from latex source to expression trees and vice versa
+(in-package :computer-algebra)
 
 (defvar *filestream* nil)
 

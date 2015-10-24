@@ -1,4 +1,6 @@
 ;;;; ascii-converter.lisp
+(in-package :computer-algebra)
+
 
 (defun number-decimal-p (arg)
   "Accepts a character literal and determines if it is a number or a decimal point."
@@ -51,7 +53,7 @@ closing parenthesis."
 	 (parse-num expression)) ;parse the number and return that value
       (let ((char (elt expression index))) ;store the current char for easy reference
 	(if (not (number-decimal-p char)) ;if it isn't a number or a decimal
-	    (if (> index 0);and it's after the beginning
+	    (if (> index 0)		;and it's after the beginning
 		(return) 
 		(if (not (or (char= char #\+) ;just ignore signs at the beginning
 			     (char= char #\-)))
@@ -62,7 +64,7 @@ closing parenthesis."
 in matching parenthesis, returns nil otherwise."
   (if (and (char= #\( (elt string 0))
 	   (= (elt string (1- (length string)))
-		  (end-parens string 0)))
+	      (end-parens string 0)))
       (parse-ascii (subseq string 1 (1- (length string))))))
 
 (defun parse-ascii (expression)
@@ -89,7 +91,7 @@ in matching parenthesis, returns nil otherwise."
 	   (if (= token-start 0) ;if there is no addition or subtraction
 	       (parse-mult expression)
 	       (let ((last-token (parse-ascii (subseq expression
-						    token-start))))		   
+						      token-start))))		   
 		 (if (eql '- current-op)
 		     (push `(* -1 ,last-token) main-tree)
 		     (push last-token main-tree))
@@ -101,8 +103,8 @@ in matching parenthesis, returns nil otherwise."
 	  (#\+
 	   (unless (= current-index 0)
 	     (let ((sym (parse-ascii (subseq expression
-					   token-start
-					   current-index))))
+					     token-start
+					     current-index))))
 	       (if (eql '+ current-op)
 		   (push sym main-tree)
 		   (push `(* -1 ,sym) main-tree)))
@@ -112,8 +114,8 @@ in matching parenthesis, returns nil otherwise."
 	   ;;if it's not at the beginning
 	   (unless (= current-index 0)
 	     (let ((sym (parse-ascii (subseq expression
-					   token-start
-					   current-index))))
+					     token-start
+					     current-index))))
 	       (if (eql '+ current-op)
 		   (push sym main-tree)
 		   (push `(* -1 ,sym) main-tree))))
@@ -123,17 +125,17 @@ in matching parenthesis, returns nil otherwise."
 
 (deftest test-addition ()
   (check
-   (= (eval (parse-ascii "-3")) -3)
-   (= (eval (parse-ascii "+4")) 4)
-   (= (eval (parse-ascii "2+2")) 4)
-   (= (eval (parse-ascii "1+2+3+4+5+6+7+8+9+0")) 45)
-   (= (eval (parse-ascii "8-5")) 3)
-   (= (eval (parse-ascii "7-3-3-1")) 0)
-   (= (eval (parse-ascii "3+3-3+8-8")) 3)
-   (= (eval (parse-ascii "7+1-8-3-1")) -4)
-   (= (eval (parse-ascii "38-6+1+1")) 34)
-   (= (eval (parse-ascii "8-3+4-2" )) 7)
-   (= (eval (parse-ascii "9+1+1-2+3+32")) 44)))
+    (= (eval (parse-ascii "-3")) -3)
+    (= (eval (parse-ascii "+4")) 4)
+    (= (eval (parse-ascii "2+2")) 4)
+    (= (eval (parse-ascii "1+2+3+4+5+6+7+8+9+0")) 45)
+    (= (eval (parse-ascii "8-5")) 3)
+    (= (eval (parse-ascii "7-3-3-1")) 0)
+    (= (eval (parse-ascii "3+3-3+8-8")) 3)
+    (= (eval (parse-ascii "7+1-8-3-1")) -4)
+    (= (eval (parse-ascii "38-6+1+1")) 34)
+    (= (eval (parse-ascii "8-3+4-2" )) 7)
+    (= (eval (parse-ascii "9+1+1-2+3+32")) 44)))
 
 (defun parse-mult (expression)
   "Accepts a string containing no addition or subtraction and converts it into
@@ -169,8 +171,8 @@ in matching parenthesis, returns nil otherwise."
 	(#\*
 	 (when (eql current-op '/)
 	   (push (parse-ascii (subseq expression
-				    token-start
-				    index))
+				      token-start
+				      index))
 		 main-tree)
 	   (return-from parse-mult `(* ,main-tree
 				       ,(parse-mult (subseq
@@ -178,8 +180,8 @@ in matching parenthesis, returns nil otherwise."
 						     (1+ index)))
 				       (expt (* ,@divisors) -1))))
 	 (push (parse-ascii (subseq expression
-				  token-start
-				  index))
+				    token-start
+				    index))
 	       main-tree)
 	 (setf token-start (1+ index)
 	       current-op '*))
@@ -201,13 +203,13 @@ in matching parenthesis, returns nil otherwise."
 
 (deftest test-multiplication ()
   (check
-   (= (eval (parse-ascii "1+1*2")) 3)
-   (= (eval (parse-ascii "1+1*(2)")) 3)
-   (= (eval (parse-ascii "1+2*3-4*(5*3)")) -53)
-   (= (eval (parse-ascii "1*2*(3)")) 6)
-   (= (eval (parse-ascii "(-1)*(5/2)*(-8)")) 20)
-   (= (eval (parse-ascii "3/4/6")) 1/6)
-   (= (eval (parse-ascii "(2*3)*(4*(1/2)*6)")) 72)))
+    (= (eval (parse-ascii "1+1*2")) 3)
+    (= (eval (parse-ascii "1+1*(2)")) 3)
+    (= (eval (parse-ascii "1+2*3-4*(5*3)")) -53)
+    (= (eval (parse-ascii "1*2*(3)")) 6)
+    (= (eval (parse-ascii "(-1)*(5/2)*(-8)")) 20)
+    (= (eval (parse-ascii "3/4/6")) 1/6)
+    (= (eval (parse-ascii "(2*3)*(4*(1/2)*6)")) 72)))
 
 (defun parse-powers (expression)
   (do ((index 0 (1+ index))
@@ -239,14 +241,14 @@ in matching parenthesis, returns nil otherwise."
 (defun to-infix (tree operator)
   (if tree
       (concatenate 'string
-		   (tree->string (car tree) t)
+		   (tree->ascii (car tree) t)
 		   (if (eql nil (cdr tree))
 		       ""
 		       (string operator))
 		   (to-infix (cdr tree) operator))
       ""))
 
-(defun tree->string (tree &optional parens)
+(defun tree->ascii (tree &optional parens)
   (cond
     ((numberp tree)
      (format nil "~d" tree))
@@ -262,8 +264,8 @@ in matching parenthesis, returns nil otherwise."
 	 (expt
 	  (setf str
 		(concatenate 'string
-			     (tree->string (car args) t) "^"
-			     (tree->string (cadr args) t))))
+			     (tree->ascii (car args) t) "^"
+			     (tree->ascii (cadr args) t))))
 	 (t
 	  (error "~&Unknown function: ~a" funct )))
        (if parens

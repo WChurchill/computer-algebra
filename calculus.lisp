@@ -1,3 +1,7 @@
+;;;; calculus.lisp
+
+(in-package :computer-algebra)
+
 (defun differentiate (function variable)
   "Accepts a tree and differentiates with respect to the given symbol"
   (cond

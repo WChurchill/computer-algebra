@@ -1,5 +1,7 @@
 ;;;; algebra.lisp
 ;;;; Basic algebraic functionality
+(in-package :computer-algebra)
+
 
 (defparameter functions
   `(+ - / * log sqrt exp expt sin cos tan summation integrate lim))
@@ -330,27 +332,33 @@ of an expression."
   "Given a symbol as a variable and a pair of expression trees as an equation, 
 isolate the specified variable and simplify the other side of the equation."
   (assert (equal '= (first equation))) ;equation must start with "=" symbol
-  ())
+  (let ((expressions (rest equation)))
+    (assert (contains-var variable expressions))))
 
 (deftest test-solve-for ()
   (check
-    ;; How do I test that an error is correctly thrown?
-    ;; (= (solve-for 'x '(= 1 2)) 'error)
-    ;; (= (solve-for 'x '(= x 4)) 4)
-    ;; (= (solve-for 'x '(= 4 x)) 4)
-    ;; (= (solve-for 'x '(= (+ x 2) 4)))
-    ;; (= (solve-for 'x '(= (+ x -2) 6)))
-    ;; (= (solve-for 'x '(= (+ 2 (* -1 x)) -2)))
-    ;; (= (solve-for 'x '(=
-    ;; 		       (+ 4 (+ 2 (* -1 x)))
-    ;; 		       (+ )))
-    ))
+    (handler-case ;make sure an error is thrown
+	(progn
+	  (solve-for 'x '(= 1 2))
+	  nil)
+      (error (e) t))
+    (= (solve-for 'x '(= x 4)) 4)
+    (= (solve-for 'x '(= 4 x)) 4)
+    (= (solve-for 'x '(= (+ x 2) 4)))
+    (= (solve-for 'x '(= (+ x -2) 6)))
+    (= (solve-for 'x '(= (+ 2 (* -1 x)) -2)))
+    (= (solve-for 'x '(=
+    		       (+ 4 (+ 2 (* -1 x)))
+    		       (+ ))))))
 
 (defun expand-polynomial (polynomial exponent)
-  )
+  (assert (eql '+ (first polynomial)))
+  ())
 
-(define-theorem
-    '(* -1 (* -1 x)) 'x)
+
 
 (defun define-theorem (exp1 exp2)
   (cons exp1 (cons exp2 nil)))
+
+(define-theorem
+    '(* -1 (* -1 x)) 'x)

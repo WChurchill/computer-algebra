@@ -1,4 +1,5 @@
 ;;;; trigonometry.lisp
+(in-package :computer-algebra)
 
 (defun rads->deg (num)
   (* 180 (/ num pi)))
@@ -6,7 +7,7 @@
 (defun deg->rads (num)
   (/  (* num pi) 180))
 
-(defmacro define-identity)
+(defmacro define-identity (&rest args))
 
 ;; sin(2a) = 2sin(a)cos(a)
 (define-identity
@@ -62,4 +63,4 @@
     `(* (+ 1 (- (cos (* 2 theta))))
 	(expt (+ 1 (cos (* 2 theta))) -1)))
 
-(defin-identity)
+

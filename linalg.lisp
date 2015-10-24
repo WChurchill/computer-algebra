@@ -1,5 +1,7 @@
 ;;;; linalg.lisp
 ;;;; Linear Algebra functionality
+(in-package :computer-algebra)
+
 (defun dot-product (vector1 vector2)
   (do ((index 0 (1+ index))
        (sum 0))

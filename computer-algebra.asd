@@ -7,4 +7,10 @@
   :serial t
   :depends-on ("utilities")
   :components ((:file "package")
-	       (:file "computer-algebra")))
+	       (:file "computer-algebra")
+	       (:file "algebra")
+	       (:file "ascii-converter")
+	       (:file "calculus")
+	       (:file "latex-converter")
+	       (:file "linalg")
+	       (:file "trigonometry")))
