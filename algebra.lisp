@@ -3,8 +3,7 @@
 (in-package :computer-algebra)
 
 
-(defparameter functions
-  `(+ - / * log sqrt exp expt sin cos tan summation integrate lim))
+
 
 (defun var-p (symbol)
   (not (or (numberp symbol)
@@ -30,12 +29,16 @@
    (eql (has-vars-p '(expt 12 (+ 2 4 (- 89 (/ 1 2 'x))))) t)))
 
 (defun contains-var (var tree)
-  (dolist (node tree nil)
-    (if (listp node)
-	(if (contains-var var node)
-	    (return-from contains-var t))
-	(if (equal var node)
-	    (return-from contains-var t)))))
+  (and
+   (not (numberp tree))
+   (or (and (symbolp tree)
+	    (eql var tree))
+       (dolist (node tree nil)
+	 (if (listp node)
+	     (if (contains-var var node)
+		 (return-from contains-var t))
+	     (if (equal var node)
+		 (return-from contains-var t)))))))
 
 
 (defun replace-var (tree var value)
@@ -110,6 +113,9 @@
    (equal (replace-vars '(expt 12 (+ 2 4 (- 89 (/ 1 2 'x)))) '(x) '((log 10 y)))
 	  '(expt 12 (+ 2 4 (- 89 (/ 1 2 (log 10 'y))))))))
 
+(defparameter functions
+  `(+ * log exp expt sin cos tan sum lim))
+
 (defun simplify (tree)
   (assert tree)
   (cond
@@ -118,36 +124,53 @@
      (return-from simplify tree))
     ((= 1 (length tree))
      (return-from simplify (simplify (first tree)))))
-  (assert (find (first tree) functions))
   (let ((funct (first tree))
-	(args (rest tree))
-	newtree)
+	(args (rest tree)))
+    (assert (find (first tree) functions))
     (case funct
       (+
        (simplify-addition args))
       (*
        (simplify-mult args))
-      (expt
-       ;;Replace (expt (exp 1) ...) with (exp ...)
-       (if (equal (simplify (first args)) '(exp 1))
-	     (return-from simplify `(exp ,(simplify (second args))))))
       (exp
-       (return-from simplify `(exp ,(simplify (first args))))))))
+       `(exp ,(simplify (first args))))
+      (expt
+       (apply #'simplify-expt args))
+      (log
+       (apply #'simplify-log args))
+      (sum
+       (apply #'simplify-summation args)))))
+
+
+(defun simplify-log (arg)
+  (setf arg (simplify arg)
+	base (simplify base))
+  `(log ,arg
+	,base))
 
 (deftest test-simplify ()
   (check
-   (equal (simplify '(+ x))
-	  'x)
-   (equal (simplify '(+ 7))
-	  7)
-   (= (simplify '(+ 7 3))
-      10)
-   (= (simplify '(* 2 3))
-      6)
-   (equal (simplify '(+ 1 x))
-	  '(+ 1 x))))
+    (= (simplify '(+ 7))
+       7)
+    (= (simplify '(+ 7 3))
+       10)
+    (= (simplify '(* 2 3))
+       6)
+    (equal (simplify '(+ x))
+	   'x)
+    (equal (simplify '(+ 1 x))
+	   '(+ 1 x))))
 
-(defparameter recursion-count 0)
+(defun simplify-expt (base power)
+  ;;Replace (expt (exp 1) ...) with (exp ...)
+  (if (equal (simplify base) '(exp 1))
+      (return-from simplify-expt
+	`(exp ,(simplify (second args)))))
+  ;; x^1
+  ;; x^0
+  ;; 1^x
+  ;; 0^x
+  `(expt ,(simplify (second args))))
 
 (defun simplify-addition (args)
   (if (= (length args) 1)
@@ -169,12 +192,13 @@
 		 (if (gethash s-val list-hash)
 		     (incf (gethash val list-hash))
 		     (setf (gethash val list-hash) 1)))))
-	  ((symbolp val)
+	  ((integerp val)
+	   (push val num-stack))
+	  ((or (symbolp val)
+	       (numberp val))
 	   (if (gethash val symbol-hash)
 	       (incf (gethash val symbol-hash))
-	       (setf (gethash val symbol-hash) 1)))
-	  ((numberp val)
-	   (push val num-stack)))))
+	       (setf (gethash val symbol-hash) 1))))))
     (push '+ num-stack)
     (let ((sum (eval num-stack)))
       (if only-nums
@@ -209,9 +233,9 @@
 	  '(1 2 (+ 3 4) 5 6))))
 
 (defun simplify-mult (args)
-  (print "simplify-mult")
-  (print args)
-  (if (= (length args) 1)
+  ;(print "simplify-mult")
+  ;(print args)
+  (if (= (length args) 1) ; if there's only one argument, return it
       (return-from simplify-mult (simplify (first args))))
   (let ((symbol-hash (make-hash-table :size (length args)))
 	(list-hash (make-hash-table :size (length args)))
@@ -227,19 +251,30 @@
 		 (if (gethash s-val list-hash)
 		     (incf (gethash val list-hash))
 		     (setf (gethash val list-hash) 1)))))
-	  ((symbolp val)
+	  ((integerp val)
+	   (push val num-stack))
+	  (t
+	   (assert (or (numberp val)
+		       (symbolp val)))
 	   (if (gethash val symbol-hash)
 	       (incf (gethash val symbol-hash))
-	       (setf (gethash val symbol-hash) 1)))
-	  ((numberp val)
-	   (push val num-stack)))))
-    (push '* num-stack)
-    (push (eval num-stack) newtree)
+	       (setf (gethash val symbol-hash) 1))))))
+    (when num-stack
+      (push '* num-stack)
+      (push (eval num-stack) newtree))
     (maphash #'(lambda (key value)
-		 (push `(* ,value ,key) newtree)) symbol-hash)
+		 (if (= value 1)
+		     (push key newtree)
+		     (push `(expt ,key ,value) newtree)))
+	     symbol-hash)
     (maphash #'(lambda (key value)
-		 (push `(* ,value ,key) newtree)) list-hash)
-    (push '* newtree)))
+		 (if (= value 1)
+		     (push key newtree)
+		     (push `(expt ,value ,key) newtree)))
+	     list-hash)
+    (if (= 1 (length newtree))
+	(first newtree)
+	(push '* newtree))))
 
 (defun equivalent-p (tree &rest trees)
   (assert (not (or (eql nil tree)
@@ -328,12 +363,82 @@ of an expression."
 	  (incf total)))
     total))
 
+(defun perfect-square-p (n)
+  (do* ((i 1 (1+ i))
+	(j 1 (* i i)))
+       (nil
+	nil)
+    (cond
+      ((> j n)
+       (return-from perfect-square-p nil))
+      ((= j n)
+       (return-from perfect-square-p t)))))
+
 (defun solve-for (variable equation)
   "Given a symbol as a variable and a pair of expression trees as an equation, 
 isolate the specified variable and simplify the other side of the equation."
+  ;;TODO add support for more than 2 sides of an equation
+  ;;TODO ability to return multiple values
+  ;;TODO imaginary number support
+
+;;; ITERATION 1
+;;; Only one count of x. No nested functions. Only addition in input.
+;;; ITERATION 2
+;;; Multiple x allowed.
+;;; ITERATION 3
+;;; Only addition and multiplication in input. No exponents in input.
+;;; 
   (assert (equal '= (first equation))) ;equation must start with "=" symbol
-  (let ((expressions (rest equation)))
-    (assert (contains-var variable expressions))))
+  (assert (= (length (rest equation)) 2)) ;only 2 sides to an equation (for now)
+  (let ((left-side (first (rest equation)))
+        (right-side (second (rest equation))))
+    (assert (or (contains-var variable left-side)
+                (contains-var variable right-side)))
+    ;;On the right side, put all expressions containing x on the left side
+    (change-side right-side left-side variable
+                 #'contains-var)
+      
+    ;;At this point, 'variable' is guaranteed to be somewhere in 'left-side'
+    ;;On the left side, put all expressions NOT containing x on the right side
+    (change-side left-side right-side variable
+                 #'(lambda (var node) (not (contains-var var node))))
+    
+    right-side
+    #|(do ()
+    ((and (not (contains-var variable right-side))
+    (equal variable left-side))
+    right-side)
+      
+    ())|#))
+
+(defmacro change-side (initial destination variable test-fun)
+  (with-gensyms (ls transfer-stack)
+    `(let (,transfer-stack)
+       (do ((,ls ,initial))
+           ((eql ,ls nil)
+            nil)
+         ;(print (car ,ls))
+         (if (funcall ,test-fun ,variable (car (cdr ,ls)))
+             (progn (push (car (cdr ,ls)) ,transfer-stack)
+                    (setf
+                     (cdr ,ls) (cdr (cdr ,ls))))
+             (setf ,ls (cdr ,ls))))
+       ;(format t "~&Moving ~a to the right side~%" ,transfer-stack)
+       (cond
+         ((eql nil ,transfer-stack) nil)
+         ((= (length ,transfer-stack) 1)
+          (setf ,destination (append ,destination `((* -1 ,@,transfer-stack)))))
+         (t
+          (setf ,destination (append ,destination `((* -1 (+ ,@,transfer-stack))))))))))
+
+(defun test-change-side ()
+  (let ((left-side '(+ 1 x y))
+        (right-side '(+ 2 x)))
+    (format t "left-side: ~a~%" left-side)
+    (format t "right-side: ~a~%" right-side)
+    (change-side right-side left-side 'x #'contains-var)
+    (format t "left-side: ~a~%" left-side)
+    (format t "right-side: ~a~%" right-side)))
 
 (deftest test-solve-for ()
   (check
@@ -353,7 +458,10 @@ isolate the specified variable and simplify the other side of the equation."
 
 (defun expand-polynomial (polynomial exponent)
   (assert (eql '+ (first polynomial)))
-  ())
+  (let ((result nil))
+    (dotimes (i exponent)
+      (push polynomial result))
+    (push '* result)))
 
 
 
@@ -362,3 +470,38 @@ isolate the specified variable and simplify the other side of the equation."
 
 (define-theorem
     '(* -1 (* -1 x)) 'x)
+
+(defun simplify-summation (loopvar init-value endvar expression)
+  (cond
+    ((integerp expression)
+     `(* (+ ,endvar (* -1 ,init-value) 1) ,expression))
+    ((symbolp expression)
+     (if (eql expression loopvar)
+	 (progn
+	   (assert (= init-value 1))
+	   `(* ,endvar (+ 1 ,endvar) (expt 2 -1)))
+	 `(* (+ ,endvar (* -1 ,init-value) 1) ,expression)))
+    ((listp expression)
+     (assert (= init-value 1))
+     (let ((funct (first expression))
+	   (args (rest expression)))
+       (case funct
+	 ((+)
+	  (let (result-tree)
+	   (dolist (node args)
+	     (push (simplify-summation loopvar init-value endvar node) result-tree))
+	   (push '+ result-tree)))
+	 ((*)
+	  (let (constant-list loopvar-list)
+	    (dolist (node args)
+	      (if (contains-var loopvar node)
+		  (push node loopvar-list)
+		  (push node constant-list)))
+	    (append (list '*) constant-list)))
+	 ((sum)
+	  (apply #'simplify-summation args))
+	 (t
+	  (error "Invalid function ~S" funct)))))
+    (t
+     (error "Invalid summation expression ~s." expression))))
+
