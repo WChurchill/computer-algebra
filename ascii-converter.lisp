@@ -137,6 +137,34 @@ in matching parenthesis, returns nil otherwise."
     (= (eval (parse-ascii "8-3+4-2" )) 7)
     (= (eval (parse-ascii "9+1+1-2+3+32")) 44)))
 
+(defconstant function-names
+  '("sin"				; `(sin ,(parse-ascii str))
+    "cos"				; `(cos ,(parse-ascii str))
+    "tan"				; `(tan ,(parse-ascii str))
+    "arcsin" "arccos" "arctan"
+    "sec"			 ; `(expt (cos ,(parse-ascii str)) -1)
+    "csc"			 ; `(expt (sin ,(parse-ascii str)) -1)
+    "cot"			 ; `(expt (tan ,(parse-ascii str)) -1)
+    "arcsec" "arccsc" "arccot"
+    "ln"			   ; `(log ,(parse-ascii str) (exp 1))
+    "log"			   ; `(log ,(parse-ascii str) 10)
+    "exp"			   ; `(exp ,(parse-ascii str))
+    ))
+
+#|(defun parse-functs (expression)
+  "Takes function names and converts them into the common lisp equivalent"
+  (do ((index 0 (1+ index))
+       (token-start 0)
+       main-tree)
+      ((= index (length expression)))
+    (let ((str (subseq expression token-start index)))
+      (cond
+	((string-equal str "ln")
+	 ())
+	((string-equal str "log")
+	 (assert )
+	 (push `(log ,(parse-ascii )) main-tree))))))|#
+
 (defun parse-mult (expression)
   "Accepts a string containing no addition or subtraction and converts it into
  a manipulatable tree. Multiplicands must be separated by a '*'. "
@@ -250,27 +278,54 @@ in matching parenthesis, returns nil otherwise."
 
 (defun tree->ascii (tree &optional parens)
   (cond
+    ;; If the tree is a single number just print it
     ((numberp tree)
      (format nil "~d" tree))
+    ;; If the tree is just one symbol print the symbol
     ((symbolp tree)
      (string tree))
+    ;; If the tree is an actual tree then we have work to do
     ((listp tree)
-     (let ((funct (first tree))
-	   (args (rest tree))
-	   (str ""))
+     (let ((funct (first tree)) ;call the function funct
+	   (args (rest tree)) ;call the list of arguments args
+	   (out-str "")) ;the string that the function returns
+       ;;The output string depends on the mathematical operation
        (case funct
+	 ;; if it's commutative like multiplication or addition
 	 ((* +)
-	  (setf str (to-infix args funct)))
+	  ;; put an operator in between each argument 
+	  (setf out-str (to-infix args funct)))
+	 ;; if it's an exponent
 	 (expt
-	  (setf str
+	  (setf out-str
 		(concatenate 'string
-			     (tree->ascii (car args) t) "^"
+			     ;; convert the base to ascii
+			     (tree->ascii (car args) t) "^" ; stick a carat in between
+			     ;; convert the exponent to ascii
 			     (tree->ascii (cadr args) t))))
+	 (exp
+	  (setf out-str
+		(concatenate 'string "e^" (tree->ascii args t))))
+	 ((sin cos tan asin acos atan)
+	  (setf out-str
+		(concatenate
+		 'string
+		 (string funct)
+		 (tree->ascii args t))))
 	 (t
 	  (error "~&Unknown function: ~a" funct )))
        (if parens
 	   (concatenate 'string
-			"(" str ")")
-	   str)))))
+			"(" out-str ")")
+	   out-str)))))
 
 
+(deftest test-tree->ascii ()
+  (check
+    (string= (tree->ascii '(+ 1 2 x 3)) "1+2+X+3")
+    (string= (tree->ascii '(* 1 2 x 3)) "1*2*X*3")
+    (string= (tree->ascii '(* 1 2 (+ x 3))) "1*2*(X+3)")
+    (string= (tree->ascii '(expt x 3)) "X^3")
+    (string= (tree->ascii '(* 1 (expt x 2) (+ x 3))) "1*(X^2)*(X+3)")
+    (string= (tree->ascii '(* 1 (expt x 2) (+ x 3))) "1*(X^2)*(X+3)")
+    ))
