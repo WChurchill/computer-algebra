@@ -14,12 +14,41 @@
     ((eql '+ (first function))
      (append '(+) (map 'list #'(lambda (x) (differentiate x variable)) (rest function))))
     ((eql '* (first function))
-     ())))
+     (let* ((args (rest function))
+	    (arg1 (first args))
+	    (arg2 (rest args)))
+       ()))
+    ((eql 'ln (first function))
+     (cond ;(log number &optional base)
+      ((= (length function) 3)
+       (let ((arg (second function))
+             (base (third function)))
+         `(* ,(differentiate arg variable)
+             (expt (* ,arg (log ,base) )
+                   -1))))
+      ((= (length function) 2)
+       `(* ,(differentiate (rest function) variable)
+           (expt arg -1)))
+      (t
+       (error "Malformed log expression: ~s" function))))
+    ((eql 'expt (first function))
+     (if (contains-var variable (second function))
+         (if (contains-var variable (third function))
+             ;; x^x
+	     (print "i dunno lol")
+	     ;; x^constant
+             `(* ,(third function) (expt ,(second function) (+ ,(third function) -1) )))
+	 ;; constant^x
+	 ;;`(* )
+	 (print "to be implemented")))
+    ((eql 'exp (first function))
+     `(* ,(differentiate (rest function) variable)
+         (exp ,(rest function))))))
 
 (defun integrate (funct var &optional start end)
   ;;Symbolic Integration
-  funct
-  var
+  ;funct
+  ;var
   ;;Definite Evaluation
   (if (or start end)
       (print t)))
